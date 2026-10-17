@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مذكرة المانجا</title>
+<meta name="theme-color" content="#0f1117">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="المانجا">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-in">
+    <h1>📖 أين وصلت؟</h1>
+    <button id="addBtn" class="btn primary">+ إضافة مانجا</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats" id="stats"></section>
+
+  <section class="tools">
+    <input id="search" type="search" placeholder="🔍 ابحث عن مانجا...">
+    <select id="sort">
+      <option value="updated_at">آخر تحديث</option>
+      <option value="rating">الأعلى تقييمًا</option>
+      <option value="title">الاسم</option>
+      <option value="chapter">الفصل</option>
+    </select>
+  </section>
+
+  <section id="list" class="grid"></section>
+  <p id="empty" class="empty" hidden>لا توجد نتائج. أضف أول مانجا لك ✨</p>
+</main>
+
+<dialog id="dlg">
+  <form id="form" method="dialog">
+    <h2 id="dlgTitle">إضافة مانجا</h2>
+    <label>الاسم<input id="fTitle" required maxlength="120"></label>
+    <label>الفصل<input id="fChapter" type="number" min="0" step="any" inputmode="decimal" value="0"></label>
+    <div class="label">التقييم <span id="ratingText"></span></div>
+    <div id="stars" class="stars pick"></div>
+    <label>ملاحظات<textarea id="fNotes" rows="3" maxlength="500"></textarea></label>
+    <label>الغلاف<input id="fCover" type="file" accept="image/*"></label>
+    <div class="actions">
+      <button type="button" id="delBtn" class="btn danger" hidden>🗑 حذف</button>
+      <span class="sp"></span>
+      <button type="button" id="cancel" class="btn">إلغاء</button>
+      <button id="save" class="btn primary">حفظ</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

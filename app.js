@@ -1,0 +1,189 @@
+const SUPABASE_URL = 'https://jtzbdqoxdxeujnoprzeo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_fLvKn_44XpI9d7Jy3Gv19g_SZo82b3v';
+const BUCKET = 'images';
+const MAX_INPUT = 15 * 1024 * 1024;
+const MAX_DIM = 800;
+const QUALITY = 0.82;
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+let items = [];
+let editingId = null;
+let pickRating = 0;
+
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+const starsHTML = n => Array.from({ length: 10 }, (_, i) => `<span class="${i < n ? 'on' : ''}">★</span>`).join('');
+
+function showSkeleton() {
+  $('stats').innerHTML = '<div class="stat-sk"></div>';
+  $('list').innerHTML = Array.from({ length: 8 }, () => `
+    <article class="card sk">
+      <div class="cover"></div>
+      <div class="info"><div class="line w70"></div><div class="line w50"></div><div class="line w40"></div></div>
+    </article>`).join('');
+}
+
+async function load() {
+  const { data, error } = await db.from('manga').select('*');
+  if (error) { $('list').innerHTML = ''; return toast('خطأ: ' + error.message); }
+  items = data;
+  render();
+}
+
+function render() {
+  const q = $('search').value.trim().toLowerCase();
+  const sort = $('sort').value;
+  const rows = items.filter(m => m.title.toLowerCase().includes(q));
+  rows.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'ar')
+    : sort === 'chapter' ? b.chapter - a.chapter
+    : sort === 'rating' ? (b.rating || 0) - (a.rating || 0)
+    : new Date(b.updated_at) - new Date(a.updated_at));
+
+  $('stats').innerHTML = `<div class="stat"><b>${items.length}</b><span>عدد المانجا</span></div>`;
+
+  $('empty').hidden = rows.length > 0;
+  $('list').innerHTML = rows.map(m => `
+    <article class="card" data-id="${m.id}">
+      <button class="btn gear" data-act="edit" title="تعديل" aria-label="تعديل">⚙️</button>
+      ${m.cover_url ? `<img class="cover" src="${esc(m.cover_url)}" alt="${esc(m.title)}" loading="lazy">` : '<div class="cover">📕</div>'}
+      <div class="info">
+        <h3 title="${esc(m.title)}">${esc(m.title)}</h3>
+        ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
+        <div class="chapter">وصلت إلى فصل <b>${Number(m.chapter) || 0}</b></div>
+        ${m.notes ? `<div class="note">${esc(m.notes)}</div>` : ''}
+      </div>
+    </article>`).join('');
+}
+
+function storagePath(url) {
+  const i = url ? url.indexOf(`/${BUCKET}/`) : -1;
+  return i < 0 ? null : decodeURIComponent(url.slice(i + BUCKET.length + 2));
+}
+
+async function remove() {
+  const m = items.find(x => x.id === editingId);
+  if (!m || !confirm(`حذف "${m.title}" نهائيًا؟`)) return;
+  const { error } = await db.from('manga').delete().eq('id', m.id);
+  if (error) return toast(error.message);
+  const p = storagePath(m.cover_url);
+  if (p) db.storage.from(BUCKET).remove([p]);
+  $('dlg').close();
+  items = items.filter(x => x.id !== m.id);
+  render();
+  toast('تم الحذف');
+}
+
+async function compress(file) {
+  if (file.type === 'image/gif' || file.type === 'image/svg+xml') return file;
+  let bmp;
+  try { bmp = await createImageBitmap(file); } catch { return file; }
+  const scale = Math.min(1, MAX_DIM / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+  bmp.close?.();
+  const toBlob = type => new Promise(r => canvas.toBlob(r, type, QUALITY));
+  let blob = await toBlob('image/webp');
+  if (!blob || blob.type !== 'image/webp') blob = await toBlob('image/jpeg');
+  return blob && blob.size < file.size ? blob : file;
+}
+
+async function uploadCover(file) {
+  if (file.size > MAX_INPUT) throw new Error('الصورة كبيرة جدًا (الحد 15MB)');
+  const blob = await compress(file);
+  const ext = (blob.type.split('/')[1] || 'jpg').replace('jpeg', 'jpg');
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await db.storage.from(BUCKET).upload(path, blob, { contentType: blob.type, cacheControl: '31536000' });
+  if (error) throw new Error('فشل رفع الصورة: ' + error.message);
+  return db.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+function setRating(n) {
+  pickRating = n;
+  $('stars').innerHTML = starsHTML(n);
+  [...$('stars').children].forEach((el, i) => el.dataset.v = i + 1);
+  $('ratingText').textContent = n ? `(${n}/10)` : '(بدون)';
+}
+
+function openDialog(m) {
+  editingId = m ? m.id : null;
+  $('dlgTitle').textContent = m ? 'تعديل المانجا' : 'إضافة مانجا';
+  $('fTitle').value = m ? m.title : '';
+  $('fChapter').value = m ? m.chapter : 0;
+  $('fNotes').value = m ? (m.notes || '') : '';
+  $('fCover').value = '';
+  $('delBtn').hidden = !m;
+  setRating(m ? (m.rating || 0) : 0);
+  $('dlg').showModal();
+}
+
+$('stars').onclick = e => {
+  const s = e.target.closest('[data-v]');
+  if (!s) return;
+  const v = +s.dataset.v;
+  setRating(v === pickRating ? 0 : v);
+};
+$('addBtn').onclick = () => openDialog(null);
+$('cancel').onclick = () => $('dlg').close();
+$('delBtn').onclick = remove;
+$('search').oninput = render;
+$('sort').onchange = render;
+
+$('list').onclick = e => {
+  const b = e.target.closest('[data-act="edit"]');
+  if (!b) return;
+  openDialog(items.find(x => x.id === +b.closest('.card').dataset.id));
+};
+
+$('form').onsubmit = async e => {
+  e.preventDefault();
+  const btn = $('save');
+  btn.disabled = true;
+  btn.textContent = 'جارٍ الحفظ...';
+  try {
+    const row = {
+      title: $('fTitle').value.trim(),
+      chapter: Math.max(0, +$('fChapter').value || 0),
+      rating: pickRating,
+      notes: $('fNotes').value.trim() || null,
+      updated_at: new Date().toISOString()
+    };
+    const file = $('fCover').files[0];
+    const old = editingId ? items.find(x => x.id === editingId) : null;
+    if (file) row.cover_url = await uploadCover(file);
+
+    const q = editingId ? db.from('manga').update(row).eq('id', editingId) : db.from('manga').insert(row);
+    const { error } = await q;
+    if (error) throw new Error(error.message);
+
+    if (file && old) {
+      const p = storagePath(old.cover_url);
+      if (p) db.storage.from(BUCKET).remove([p]);
+    }
+    $('dlg').close();
+    toast('تم الحفظ ✅');
+    load();
+  } catch (err) {
+    toast(err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'حفظ';
+  }
+};
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
+showSkeleton();
+load();
