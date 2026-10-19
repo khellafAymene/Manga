@@ -20,7 +20,10 @@
 <header class="top">
   <div class="wrap top-in">
     <h1>📖 أين وصلت؟</h1>
-    <button id="addBtn" class="btn primary">+ إضافة مانجا</button>
+    <div class="top-btns">
+      <button id="addBtn" class="btn primary" hidden>+ إضافة مانجا</button>
+      <button id="authBtn" class="btn">🔑 دخول</button>
+    </div>
   </div>
 </header>
 
@@ -38,14 +41,14 @@
   </section>
 
   <section id="list" class="grid"></section>
-  <p id="empty" class="empty" hidden>لا توجد نتائج. أضف أول مانجا لك ✨</p>
+  <p id="empty" class="empty" hidden>لا توجد نتائج.</p>
 </main>
 
 <dialog id="dlg">
   <form id="form" method="dialog">
     <h2 id="dlgTitle">إضافة مانجا</h2>
     <label>الاسم<input id="fTitle" required maxlength="120"></label>
-    <label>الفصل<input id="fChapter" type="number" min="0" step="any" inputmode="decimal" value="0"></label>
+    <label>الفصل (يقبل الفاصلة مثل 10.5)<input id="fChapter" type="number" min="0" step="any" inputmode="decimal" value="0"></label>
     <div class="label">التقييم <span id="ratingText"></span></div>
     <div id="stars" class="stars pick"></div>
     <label>ملاحظات<textarea id="fNotes" rows="3" maxlength="500"></textarea></label>
@@ -55,6 +58,19 @@
       <span class="sp"></span>
       <button type="button" id="cancel" class="btn">إلغاء</button>
       <button id="save" class="btn primary">حفظ</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="loginDlg">
+  <form id="loginForm" method="dialog">
+    <h2>تسجيل الدخول</h2>
+    <label>البريد الإلكتروني<input id="lEmail" type="email" required autocomplete="username"></label>
+    <label>كلمة المرور<input id="lPass" type="password" required autocomplete="current-password"></label>
+    <div class="actions">
+      <span class="sp"></span>
+      <button type="button" id="lCancel" class="btn">إلغاء</button>
+      <button id="lSubmit" class="btn primary">دخول</button>
     </div>
   </form>
 </dialog>

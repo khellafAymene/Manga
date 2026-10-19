@@ -1,9 +1,11 @@
 *{box-sizing:border-box;margin:0}
 :root{--bg:#0f1117;--card:#181b24;--card2:#1f2330;--line:#2a2f3f;--text:#e8eaf0;--mut:#8b91a5;--acc:#ff5c7a;--acc2:#7c5cff;--star:#ffc233}
 body{font-family:'Cairo',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;padding-bottom:env(safe-area-inset-bottom)}
+[hidden]{display:none!important}
 .wrap{max-width:1100px;margin:auto;padding:0 16px}
 .top{position:sticky;top:0;z-index:5;background:rgba(15,17,23,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top)}
-.top-in{display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+.top-in{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:8px}
+.top-btns{display:flex;gap:8px}
 h1{font-size:1.4rem;font-weight:800}
 .btn{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card2);color:var(--text);padding:8px 14px;border-radius:10px;transition:.15s}
 .btn:hover{border-color:var(--acc2)}
@@ -39,7 +41,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acc2);border-col
 .gear{position:absolute;z-index:2;top:20px;inset-inline-end:20px;width:34px;height:34px;padding:0;border-radius:50%;font-size:1.05rem;display:grid;place-items:center;background:rgba(15,17,23,.8)}
 .empty{text-align:center;color:var(--mut);padding:60px 0}
 .sk{pointer-events:none}
-.sk .cover,.sk .line,.sk .stat-sk{background:linear-gradient(90deg,var(--card2) 25%,#2b3042 50%,var(--card2) 75%);background-size:200% 100%;animation:shine 1.3s infinite linear}
+.sk .cover,.sk .line,.stat-sk{background:linear-gradient(90deg,var(--card2) 25%,#2b3042 50%,var(--card2) 75%);background-size:200% 100%;animation:shine 1.3s infinite linear}
 .sk .line{height:14px;border-radius:7px;margin:4px auto}
 .sk .w70{width:70%}.sk .w50{width:50%}.sk .w40{width:40%}
 .stat-sk{width:140px;height:76px;border-radius:14px}
@@ -53,4 +55,4 @@ dialog label input,dialog label textarea{margin-top:4px}
 .sp{flex:1}
 .toast{position:fixed;bottom:20px;left:50%;transform:translate(-50%,80px);background:var(--card2);border:1px solid var(--line);padding:10px 18px;border-radius:12px;opacity:0;transition:.3s;z-index:20}
 .toast.show{transform:translate(-50%,0);opacity:1}
-@media(max-width:520px){.grid{grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:8px}.gear{top:14px;inset-inline-end:14px}.stars span{font-size:.8rem}}
+@media(max-width:520px){h1{font-size:1.15rem}.btn{padding:7px 10px}.grid{grid-template-columns:repeat(2,1fr);gap:12px}.card{padding:8px}.gear{top:14px;inset-inline-end:14px}.stars span{font-size:.8rem}}

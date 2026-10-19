@@ -8,8 +8,11 @@ const QUALITY = 0.82;
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmtCh = n => String(Number(n) || 0);
 
 let items = [];
+let loaded = false;
+let isAdmin = false;
 let editingId = null;
 let pickRating = 0;
 
@@ -32,19 +35,28 @@ function showSkeleton() {
     </article>`).join('');
 }
 
+function setAuth(session) {
+  isAdmin = !!session;
+  $('addBtn').hidden = !isAdmin;
+  $('authBtn').textContent = isAdmin ? 'خروج' : '🔑 دخول';
+  render();
+}
+
 async function load() {
   const { data, error } = await db.from('manga').select('*');
   if (error) { $('list').innerHTML = ''; return toast('خطأ: ' + error.message); }
   items = data;
+  loaded = true;
   render();
 }
 
 function render() {
+  if (!loaded) return;
   const q = $('search').value.trim().toLowerCase();
   const sort = $('sort').value;
   const rows = items.filter(m => m.title.toLowerCase().includes(q));
   rows.sort((a, b) => sort === 'title' ? a.title.localeCompare(b.title, 'ar')
-    : sort === 'chapter' ? b.chapter - a.chapter
+    : sort === 'chapter' ? Number(b.chapter) - Number(a.chapter)
     : sort === 'rating' ? (b.rating || 0) - (a.rating || 0)
     : new Date(b.updated_at) - new Date(a.updated_at));
 
@@ -53,12 +65,12 @@ function render() {
   $('empty').hidden = rows.length > 0;
   $('list').innerHTML = rows.map(m => `
     <article class="card" data-id="${m.id}">
-      <button class="btn gear" data-act="edit" title="تعديل" aria-label="تعديل">⚙️</button>
+      ${isAdmin ? '<button class="btn gear" data-act="edit" title="تعديل" aria-label="تعديل">⚙️</button>' : ''}
       ${m.cover_url ? `<img class="cover" src="${esc(m.cover_url)}" alt="${esc(m.title)}" loading="lazy">` : '<div class="cover">📕</div>'}
       <div class="info">
         <h3 title="${esc(m.title)}">${esc(m.title)}</h3>
         ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
-        <div class="chapter">وصلت إلى فصل <b>${Number(m.chapter) || 0}</b></div>
+        <div class="chapter">وصلت إلى فصل <b>${fmtCh(m.chapter)}</b></div>
         ${m.notes ? `<div class="note">${esc(m.notes)}</div>` : ''}
       </div>
     </article>`).join('');
@@ -72,8 +84,9 @@ function storagePath(url) {
 async function remove() {
   const m = items.find(x => x.id === editingId);
   if (!m || !confirm(`حذف "${m.title}" نهائيًا؟`)) return;
-  const { error } = await db.from('manga').delete().eq('id', m.id);
+  const { data, error } = await db.from('manga').delete().eq('id', m.id).select();
   if (error) return toast(error.message);
+  if (!data.length) return toast('لم يُحذف شيء، تحقق من تسجيل الدخول والسياسات');
   const p = storagePath(m.cover_url);
   if (p) db.storage.from(BUCKET).remove([p]);
   $('dlg').close();
@@ -116,10 +129,11 @@ function setRating(n) {
 }
 
 function openDialog(m) {
+  if (!isAdmin) return;
   editingId = m ? m.id : null;
   $('dlgTitle').textContent = m ? 'تعديل المانجا' : 'إضافة مانجا';
   $('fTitle').value = m ? m.title : '';
-  $('fChapter').value = m ? m.chapter : 0;
+  $('fChapter').value = m ? fmtCh(m.chapter) : 0;
   $('fNotes').value = m ? (m.notes || '') : '';
   $('fCover').value = '';
   $('delBtn').hidden = !m;
@@ -145,15 +159,38 @@ $('list').onclick = e => {
   openDialog(items.find(x => x.id === +b.closest('.card').dataset.id));
 };
 
+$('authBtn').onclick = async () => {
+  if (isAdmin) {
+    await db.auth.signOut();
+    toast('تم تسجيل الخروج');
+  } else {
+    $('loginForm').reset();
+    $('loginDlg').showModal();
+  }
+};
+$('lCancel').onclick = () => $('loginDlg').close();
+
+$('loginForm').onsubmit = async e => {
+  e.preventDefault();
+  const btn = $('lSubmit');
+  btn.disabled = true;
+  const { error } = await db.auth.signInWithPassword({ email: $('lEmail').value.trim(), password: $('lPass').value });
+  btn.disabled = false;
+  if (error) return toast('فشل الدخول: ' + error.message);
+  $('loginDlg').close();
+  toast('أهلًا بك 👋');
+};
+
 $('form').onsubmit = async e => {
   e.preventDefault();
   const btn = $('save');
   btn.disabled = true;
   btn.textContent = 'جارٍ الحفظ...';
   try {
+    const chapter = Math.max(0, Math.round((parseFloat($('fChapter').value) || 0) * 10) / 10);
     const row = {
       title: $('fTitle').value.trim(),
-      chapter: Math.max(0, +$('fChapter').value || 0),
+      chapter,
       rating: pickRating,
       notes: $('fNotes').value.trim() || null,
       updated_at: new Date().toISOString()
@@ -162,9 +199,10 @@ $('form').onsubmit = async e => {
     const old = editingId ? items.find(x => x.id === editingId) : null;
     if (file) row.cover_url = await uploadCover(file);
 
-    const q = editingId ? db.from('manga').update(row).eq('id', editingId) : db.from('manga').insert(row);
-    const { error } = await q;
+    const q = editingId ? db.from('manga').update(row).eq('id', editingId).select() : db.from('manga').insert(row).select();
+    const { data, error } = await q;
     if (error) throw new Error(error.message);
+    if (!data.length) throw new Error('لم يُحفظ شيء، تحقق من تسجيل الدخول والسياسات');
 
     if (file && old) {
       const p = storagePath(old.cover_url);
@@ -186,4 +224,5 @@ if ('serviceWorker' in navigator) {
 }
 
 showSkeleton();
+db.auth.onAuthStateChange((_event, session) => setAuth(session));
 load();
