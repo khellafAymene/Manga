@@ -30,6 +30,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--acc2);border-col
 .card:not(.sk) .cover{cursor:pointer}
 .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;text-align:center}
 .info h3{font-size:1.05rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.copyable{cursor:copy;transition:color .15s}
+.copyable:hover{color:var(--acc2)}
 .chapter{color:var(--mut);font-size:.9rem}
 .chapter b{color:var(--text);font-size:1.05rem}
 .stars{display:flex;gap:2px;direction:ltr;justify-content:center}

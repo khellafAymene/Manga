@@ -24,6 +24,23 @@ function toast(msg) {
   toast.t = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
+async function copyText(text) {
+  let ok = false;
+  try {
+    await navigator.clipboard.writeText(text);
+    ok = true;
+  } catch {
+    const t = document.createElement('textarea');
+    t.value = text;
+    t.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(t);
+    t.select();
+    try { ok = document.execCommand('copy'); } catch {}
+    t.remove();
+  }
+  toast(ok ? 'تم نسخ الاسم 📋' : 'تعذّر النسخ');
+}
+
 const starsHTML = n => Array.from({ length: 10 }, (_, i) => `<span class="${i < n ? 'on' : ''}">★</span>`).join('');
 
 function showSkeleton() {
@@ -70,7 +87,7 @@ function render() {
         ? `<img class="cover" data-act="view" tabindex="0" role="button" src="${esc(m.cover_url)}" alt="${esc(m.title)}" title="اضغط لعرض التفاصيل" loading="lazy">`
         : '<div class="cover" data-act="view" tabindex="0" role="button" title="اضغط لعرض التفاصيل">📕</div>'}
       <div class="info">
-        <h3 title="${esc(m.title)}">${esc(m.title)}</h3>
+        <h3 class="copyable" data-act="copy" title="اضغط لنسخ الاسم">${esc(m.title)}</h3>
         ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
         <div class="chapter">وصلت إلى فصل <b>${fmtCh(m.chapter)}</b></div>
       </div>
@@ -80,7 +97,7 @@ function render() {
 function openDetail(m) {
   $('dBody').innerHTML = `
     ${m.cover_url ? `<img class="d-cover" src="${esc(m.cover_url)}" alt="${esc(m.title)}">` : '<div class="d-cover d-ph">📕</div>'}
-    <div class="d-title">${esc(m.title)}</div>
+    <div class="d-title copyable" data-copy="${esc(m.title)}" title="اضغط لنسخ الاسم">${esc(m.title)}</div>
     <div class="d-meta">
       ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
       <div class="chapter">وصلت إلى فصل <b>${fmtCh(m.chapter)}</b></div>
@@ -175,6 +192,7 @@ function handleCardAction(e) {
   if (!m) return;
   if (b.dataset.act === 'edit') openDialog(m);
   else if (b.dataset.act === 'view') openDetail(m);
+  else if (b.dataset.act === 'copy') copyText(m.title);
 }
 $('list').onclick = handleCardAction;
 $('list').onkeydown = e => {
@@ -184,6 +202,10 @@ $('list').onkeydown = e => {
   }
 };
 
+$('dBody').onclick = e => {
+  const t = e.target.closest('[data-copy]');
+  if (t) copyText(t.dataset.copy);
+};
 $('dClose').onclick = () => $('detailDlg').close();
 $('detailDlg').onclick = e => { if (e.target === $('detailDlg')) $('detailDlg').close(); };
 
