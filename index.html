@@ -13,7 +13,7 @@
 <meta name="apple-mobile-web-app-title" content="المانجا">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=4">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -51,7 +51,7 @@
     <label>الفصل (يقبل الفاصلة مثل 10.5)<input id="fChapter" type="number" min="0" step="any" inputmode="decimal" value="0"></label>
     <div class="label">التقييم <span id="ratingText"></span></div>
     <div id="stars" class="stars pick"></div>
-    <label>ملاحظات<textarea id="fNotes" rows="3" maxlength="500"></textarea></label>
+    <label>القصة<textarea id="fNotes" rows="6" maxlength="2000" placeholder="اكتب قصة المانجا هنا..."></textarea></label>
     <label>الغلاف<input id="fCover" type="file" accept="image/*"></label>
     <div class="actions">
       <button type="button" id="delBtn" class="btn danger" hidden>🗑 حذف</button>
@@ -75,7 +75,12 @@
   </form>
 </dialog>
 
+<dialog id="detailDlg" class="detail">
+  <button type="button" id="dClose" class="btn close" aria-label="إغلاق">✕</button>
+  <div id="dBody"></div>
+</dialog>
+
 <div id="toast" class="toast"></div>
-<script src="app.js"></script>
+<script src="app.js?v=4"></script>
 </body>
 </html>

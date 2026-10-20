@@ -66,14 +66,29 @@ function render() {
   $('list').innerHTML = rows.map(m => `
     <article class="card" data-id="${m.id}">
       ${isAdmin ? '<button class="btn gear" data-act="edit" title="تعديل" aria-label="تعديل">⚙️</button>' : ''}
-      ${m.cover_url ? `<img class="cover" src="${esc(m.cover_url)}" alt="${esc(m.title)}" loading="lazy">` : '<div class="cover">📕</div>'}
+      ${m.cover_url
+        ? `<img class="cover" data-act="view" tabindex="0" role="button" src="${esc(m.cover_url)}" alt="${esc(m.title)}" title="اضغط لعرض التفاصيل" loading="lazy">`
+        : '<div class="cover" data-act="view" tabindex="0" role="button" title="اضغط لعرض التفاصيل">📕</div>'}
       <div class="info">
         <h3 title="${esc(m.title)}">${esc(m.title)}</h3>
         ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
         <div class="chapter">وصلت إلى فصل <b>${fmtCh(m.chapter)}</b></div>
-        ${m.notes ? `<div class="note">${esc(m.notes)}</div>` : ''}
       </div>
     </article>`).join('');
+}
+
+function openDetail(m) {
+  $('dBody').innerHTML = `
+    ${m.cover_url ? `<img class="d-cover" src="${esc(m.cover_url)}" alt="${esc(m.title)}">` : '<div class="d-cover d-ph">📕</div>'}
+    <div class="d-title">${esc(m.title)}</div>
+    <div class="d-meta">
+      ${m.rating > 0 ? `<div class="stars">${starsHTML(m.rating)}</div><div class="score">${m.rating}/10</div>` : '<div class="score">بدون تقييم</div>'}
+      <div class="chapter">وصلت إلى فصل <b>${fmtCh(m.chapter)}</b></div>
+    </div>
+    <div class="d-h">القصة</div>
+    ${m.notes ? `<div class="d-story">${esc(m.notes)}</div>` : '<div class="d-none">لم تُكتب قصة لهذه المانجا بعد.</div>'}`;
+  $('dBody').scrollTop = 0;
+  $('detailDlg').showModal();
 }
 
 function storagePath(url) {
@@ -153,11 +168,24 @@ $('delBtn').onclick = remove;
 $('search').oninput = render;
 $('sort').onchange = render;
 
-$('list').onclick = e => {
-  const b = e.target.closest('[data-act="edit"]');
+function handleCardAction(e) {
+  const b = e.target.closest('[data-act]');
   if (!b) return;
-  openDialog(items.find(x => x.id === +b.closest('.card').dataset.id));
+  const m = items.find(x => x.id === +b.closest('.card').dataset.id);
+  if (!m) return;
+  if (b.dataset.act === 'edit') openDialog(m);
+  else if (b.dataset.act === 'view') openDetail(m);
+}
+$('list').onclick = handleCardAction;
+$('list').onkeydown = e => {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.dataset.act === 'view') {
+    e.preventDefault();
+    handleCardAction(e);
+  }
 };
+
+$('dClose').onclick = () => $('detailDlg').close();
+$('detailDlg').onclick = e => { if (e.target === $('detailDlg')) $('detailDlg').close(); };
 
 $('authBtn').onclick = async () => {
   if (isAdmin) {
